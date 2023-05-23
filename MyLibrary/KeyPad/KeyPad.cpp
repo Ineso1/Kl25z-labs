@@ -103,11 +103,42 @@ char KeyPad::getKey(){
 
     if (row == 4) return '0'; /* if we get here, no key is pressed */
 
-    // Determine the key based on the column and row
-    if (col == 0xE) return keypadValues[0][row]; /* key in column 0 */
-    if (col == 0xD) return keypadValues[1][row]; /* key in column 1 */
-    if (col == 0xB) return keypadValues[2][row]; /* key in column 2 */
-    if (col == 0x7) return keypadValues[3][row]; /* key in column 3 */
+    // Debouncing
+    int debounceDelay = 20; 
+    char prevKey = 0;
+    char currentKey = 0;
 
-    return 0; /* just to be safe */
+    // Read the keypad multiple times and wait for stable input
+    for (int i = 0; i < debounceDelay; i++) {
+        delay_ms(1);  
+        setRows();
+        PTB->PCOR = rows[row];
+        delay_us(2); /* wait for signal to settle */
+        col = (PTE->PDIR & (D5 | D6 | D7 | D8)) >> 2; /* read all columns */
+        rstRows();
+        rstColumns();
+
+        if (col == 0xE) {
+            currentKey = keypadValues[0][row]; /* key in column 0 */
+        } else if (col == 0xD) {
+            currentKey = keypadValues[1][row]; /* key in column 1 */
+        } else if (col == 0xB) {
+            currentKey = keypadValues[2][row]; /* key in column 2 */
+        } else if (col == 0x7) {
+            currentKey = keypadValues[3][row]; /* key in column 3 */
+        } else {
+            currentKey = 0; /* just to be safe */
+        }
+
+        // Check if the current key is stable for debounceDelay consecutive reads
+        if (currentKey == prevKey) {
+            // Key reading is stable
+            break;
+        }
+        
+        prevKey = currentKey;
+    }
+
+    return currentKey;
+
 }
